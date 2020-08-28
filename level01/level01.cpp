@@ -8,7 +8,7 @@
 #include <string>
 #include <thread>
 
-#include <Windows.h>
+#include <windows.h>
 
 
 #define ANSWERS_NUMBER 4
@@ -196,6 +196,7 @@ void PrintQst(const unsigned int start_time, const unsigned int end_time) {
 	std::cout << SecToString(start_time) << "\n";
 	std::cout << SecToString(end_time) << "\n";
 	std::cout << "\n";
+	std::cout << "Press SPACE to speedup\n";
 }
 
 void PrintHead(std::string level_name) {
@@ -220,6 +221,14 @@ int SystemGetKey()
 	return 0;
 }
 
+int SystemWaitSpaceKey() {
+	if (GetAsyncKeyState(0x20) & 0x7FFF)
+	{
+		return true;
+	}
+	return false;
+}
+
 // ms
 void SystemSleep(unsigned int timeout) {
 	std::this_thread::sleep_for(std::chrono::milliseconds(timeout));
@@ -231,6 +240,13 @@ void PrintStatistic(struct level *l) {
 	printf("Level correct answers: %d\n", l->user_correct_answ);
 	printf("Wrong answers: %d\n", l->qst_num - l->user_correct_answ);
 	PrintLine();
+}
+
+void SystemClearKeyboardBuffer() {
+	LONG start_time_ms = GetTickCount();
+	do {
+		SystemGetKey();
+	} while (GetTickCount() - start_time_ms < 100);
 }
 
 int main()
@@ -245,19 +261,25 @@ int main()
 	do {
 		for (unsigned int i = 0; i < level->qst_num; i++) {
 			level->handler(start_time, end_time);
+			SystemClearKeyboardBuffer();
 			PrintHead(level->name);
 			PrintQst(start_time, end_time);
-			SystemSleep(level->qst_time);
+			LONG start_time_ms = GetTickCount();
+			int key = 0;
+			do {
+				if (SystemWaitSpaceKey()) {
+					break;
+				}
+			} while (GetTickCount() - start_time_ms < (LONG)level->qst_time);
 			system("CLS");
-			
+
+			SystemClearKeyboardBuffer();
 			PrintHead(level->name);
 			correct_answ = PrintAnsw(start_time, end_time);
 
-			LONG start_time_ms = GetTickCount();
-			LONG end_time = 0;
-			int key = 0;
-			do
-			{
+			start_time_ms = GetTickCount();
+			key = 0;
+			do {
 				key = SystemGetKey();
 				if (key) {
 					break;
@@ -274,7 +296,7 @@ int main()
 			SystemSleep(500);
 			system("CLS");
 		}
-		// Levasl Statistics
+		// Level Statistics
 		PrintStatistic(level);
 		system("pause");
 		system("CLS");
