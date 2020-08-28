@@ -26,7 +26,7 @@ struct level {
 	unsigned int qst_time; // ms
 	unsigned int answ_time; // ms
 	std::string name;
-	unsigned int user_correct_answ;
+	unsigned int user_correct_answ_count;
 };
 
 level s_game_levels[]{
@@ -61,35 +61,37 @@ std::string SecToString(unsigned int time) {
 	return str;
 }
 
-void RoundTime(unsigned int &time, unsigned int round) {
-	time = time - (time % round);
+unsigned int RoundTime(unsigned int time, unsigned int round) {
+	return  time - (time % round);
 }
 
-unsigned int FakeAnswer(const unsigned int time, unsigned int strategi) {
+bool AnswerCheck(unsigned int *answers, const unsigned int to_check) {
+	for (int i = 0; i < ANSWERS_NUMBER; i++) {
+		if (answers[i] == to_check) {
+			return true;
+		}
+	}
+	return false;
+}
+
+unsigned int FakeAnswer(const unsigned int time, unsigned int strategi, unsigned int *answers, level *l) {
 	switch (strategi) {
 	case 0:
-	case 1:
-	case 2: {
-
+	case 1: {
+		unsigned int t = 0;
+		do {
+			t = RoundTime(rand() % SEC_PER_DAY, l->round_time);
+		} while (AnswerCheck(answers, t));
+		return t;
 	}
-	case 3: { // +/- 1 hour strategi
+	case 2: { // + 1 hour strategi
 		int k = 0;
-		if (rand() % 2) {
-			if (time < SEC_PER_DAY - ONE_HOUR_SEC) {
-				k = ONE_HOUR_SEC;
-			}
-			else {
-				k = -ONE_HOUR_SEC;
-			}
-		}
-		else {
-			if (time > ONE_HOUR_SEC) {
-				k = -ONE_HOUR_SEC;
-			}
-			else {
-				k = ONE_HOUR_SEC;
-			}
-		}
+		k = time < SEC_PER_DAY - ONE_HOUR_SEC ? k += ONE_HOUR_SEC : k -= ONE_HOUR_SEC;
+		return time + k;
+	}
+	case 3: { // - 1 hour strategi
+		int k = 0;
+		k = time < ONE_HOUR_SEC ? k += ONE_HOUR_SEC : k -= ONE_HOUR_SEC;
 		return time + k;
 	}
 	default: {
@@ -99,39 +101,43 @@ unsigned int FakeAnswer(const unsigned int time, unsigned int strategi) {
 	}
 }
 
-unsigned int PrintAnsw(const unsigned int start_time, const unsigned int end_time) {
+void PrepareAnsw(const unsigned int correct_answ, unsigned int correct_answ_indx, unsigned int *answers, level *l) {
+	for (int i = 0; i < ANSWERS_NUMBER; i++) {
+		if (correct_answ_indx == i) {
+			answers[i] = correct_answ;
+		}
+		else {
+			answers[i] = FakeAnswer(correct_answ, i, answers, l);
+		}
+	}
+}
+
+unsigned int PrintAnsw(const unsigned int start_time, const unsigned int end_time, level *l) {
+	unsigned int answers[ANSWERS_NUMBER] = {};
 	unsigned int correct_answ_indx = rand() % ANSWERS_NUMBER;
-	unsigned int correct_answ = end_time - start_time;
+	PrepareAnsw(end_time - start_time, correct_answ_indx, answers, l);
+
 	std::string str;
 
 	for (int i = 0; i < ANSWERS_NUMBER; i++) {
-		//if (i) {
-		//	str += " ";
-		//}
 		str += std::to_string(i + 1);
 		str += ") ";
-		if (i == correct_answ_indx) {
-			// mark for correct answer
-			//str += ">";
-			str += SecToString(correct_answ);
-			str += "\n";
-		}
-		else {
-			str += SecToString(FakeAnswer(correct_answ, rand() % ANSWERS_NUMBER));
-			str += "\n";
-		}
+		str += SecToString(answers[i]);
+		//if (i == correct_answ_indx) {
+		//	str += "<";
+		//}
+		str += "\n";
 	}
-
 	std::cout << str << "\n";
 	return correct_answ_indx;
 }
 
 void Level(unsigned int &start_time, unsigned int &end_time, level *l) {
 	start_time = rand() % (SEC_PER_DAY / 2);
-	RoundTime(start_time, l->round_time);
+	start_time = RoundTime(start_time, l->round_time);
 	do {
 		end_time = start_time + rand() % (SEC_PER_DAY - start_time);
-		RoundTime(end_time, l->round_time);
+		end_time = RoundTime(end_time, l->round_time);
 	} while (end_time == start_time);
 }
 
@@ -184,8 +190,8 @@ void SystemSleep(unsigned int timeout) {
 void PrintStatistic(struct level *l) {
 	PrintHead(l->name);
 	printf("Level questons num: %d\n", l->qst_num);
-	printf("Level correct answers: %d\n", l->user_correct_answ);
-	printf("Wrong answers: %d\n", l->qst_num - l->user_correct_answ);
+	printf("Level correct answers: %d\n", l->user_correct_answ_count);
+	printf("Wrong answers: %d\n", l->qst_num - l->user_correct_answ_count);
 	PrintLine();
 }
 
@@ -222,7 +228,7 @@ int main()
 
 			SystemClearKeyboardBuffer();
 			PrintHead(level->name);
-			correct_answ = PrintAnsw(start_time, end_time);
+			correct_answ = PrintAnsw(start_time, end_time, level);
 
 			start_time_ms = GetTickCount();
 			key = 0;
@@ -235,7 +241,7 @@ int main()
 
 			int user_answ = key - 49;
 			if (correct_answ == user_answ) {
-				level->user_correct_answ++;
+				level->user_correct_answ_count++;
 				std::cout << "Yes!\n";
 			}
 			else { std::cout << "No!\n"; }
