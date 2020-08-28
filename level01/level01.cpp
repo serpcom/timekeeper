@@ -18,30 +18,36 @@
 
 #define ONE_HOUR_SEC 60 * 60
 
-typedef void(*LevelHandler)(unsigned int &start_time, unsigned int &end_time);
+typedef void(*LevelHandler)(UINT &start_time, UINT &end_time);
+
+struct game_tick {
+	UINT hour;
+	UINT minute;
+	UINT second;
+};
 
 struct level {
-	unsigned int round_time; // sec
-	unsigned int qst_num;
-	unsigned int qst_time; // ms
-	unsigned int answ_time; // ms
+	UINT round_time; // sec
+	UINT qst_num;
+	UINT qst_time; // ms
+	UINT answ_time; // ms
 	std::string name;
-	unsigned int user_correct_answ_count;
+	UINT user_correct_answ_count;
 };
 
 level s_game_levels[]{
-	{ 60 * 60,  3, 5000, 8000, "level 01", 0 },
-	{ 30 * 60,  3, 5000, 8000, "level 02", 0 },
-	{ 15 * 60,  3, 5000, 8000, "level 03", 0 },
-	{  5 * 60,  3, 5000, 8000, "level 04", 0 },
-	{  1 * 60,  3, 5000, 8000, "level 05", 0 },
+	{ 60,  3, 5000, 8000, "level 01", 0 },
+	{ 30,  3, 5000, 8000, "level 02", 0 },
+	{ 15,  3, 5000, 8000, "level 03", 0 },
+	{  5,  3, 5000, 8000, "level 04", 0 },
+	{  1,  3, 5000, 8000, "level 05", 0 },
 	{ 0, 0, 0, 0, "", 0 }
 };
 
-std::string SecToString(unsigned int time) {
-	unsigned int hours = time / 60 / 60;
-	unsigned int min = (time - (hours * 60 * 60)) / 60;
-	unsigned int sec = time - (hours * 60 * 60) - (min * 60);
+std::string SecToString(UINT time) {
+	UINT hours = time / 60 / 60;
+	UINT min = (time - (hours * 60 * 60)) / 60;
+	UINT sec = time - (hours * 60 * 60) - (min * 60);
 	std::string str;
 
 	if (hours < 10) {
@@ -61,38 +67,50 @@ std::string SecToString(unsigned int time) {
 	return str;
 }
 
-unsigned int RoundTime(unsigned int time, unsigned int round) {
-	return  time - (time % round);
+game_tick RoundTime(game_tick &time, UINT round) {
+	if (round == 60) {
+		time.minute = 0;
+	}
+	else {
+		time.minute -= time.minute % round;
+		time.minute = time.minute ? time.minute : round;
+	}
+	return time;
 }
 
-bool AnswerCheck(unsigned int *answers, const unsigned int to_check) {
+bool AnswerCheck(const struct game_tick *answers, const game_tick &to_check) {
 	for (int i = 0; i < ANSWERS_NUMBER; i++) {
-		if (answers[i] == to_check) {
+		if (answers[i].hour == to_check.hour && answers[i].minute == to_check.minute) {
 			return true;
 		}
 	}
 	return false;
 }
 
-unsigned int FakeAnswer(const unsigned int time, unsigned int strategi, unsigned int *answers, level *l) {
+struct game_tick FakeAnswer(const game_tick &correct_answer, UINT strategi, struct game_tick *answers, level *l) {
+	game_tick ret = correct_answer;
 	switch (strategi) {
 	case 0:
 	case 1: {
-		unsigned int t = 0;
+		game_tick t = {};
 		do {
-			t = RoundTime(rand() % SEC_PER_DAY, l->round_time);
+			t.hour = rand() % 24;
+			t.minute = rand() % 60;
+			t = RoundTime(t, l->round_time);
 		} while (AnswerCheck(answers, t));
 		return t;
 	}
 	case 2: { // + 1 hour strategi
 		int k = 0;
-		k = time < SEC_PER_DAY - ONE_HOUR_SEC ? k += ONE_HOUR_SEC : k -= ONE_HOUR_SEC;
-		return time + k;
+		k = correct_answer.hour < 24 ? k += 1 : k -= 1;
+		ret.hour += k;
+		return ret;
 	}
 	case 3: { // - 1 hour strategi
 		int k = 0;
-		k = time < ONE_HOUR_SEC ? k += ONE_HOUR_SEC : k -= ONE_HOUR_SEC;
-		return time + k;
+		k = correct_answer.hour > 1 ? k -= 1 : k += 1;
+		ret.hour += k;
+		return ret;
 	}
 	default: {
 		printf("ERROR, wrong strategi for fake answer");
@@ -101,28 +119,33 @@ unsigned int FakeAnswer(const unsigned int time, unsigned int strategi, unsigned
 	}
 }
 
-void PrepareAnsw(const unsigned int correct_answ, unsigned int correct_answ_indx, unsigned int *answers, level *l) {
+void PrepareAnsw(const game_tick &start_time, const game_tick &end_time, UINT correct_answ_indx, struct game_tick *answers, level *l) {
+	game_tick correct_answ = {};
+	UINT end = end_time.hour * 60 + end_time.minute;
+	UINT start = start_time.hour * 60 + start_time.minute;
+	correct_answ.hour = (end - start) / 60;
+	correct_answ.minute = (end - start) - (correct_answ.hour * 60);
+
 	for (int i = 0; i < ANSWERS_NUMBER; i++) {
 		if (correct_answ_indx == i) {
 			answers[i] = correct_answ;
 		}
 		else {
-			answers[i] = FakeAnswer(correct_answ, i, answers, l);
+			answers[i] = FakeAnswer(correct_answ, rand() % (ANSWERS_NUMBER - i), answers, l);
 		}
 	}
 }
 
-unsigned int PrintAnsw(const unsigned int start_time, const unsigned int end_time, level *l) {
-	unsigned int answers[ANSWERS_NUMBER] = {};
-	unsigned int correct_answ_indx = rand() % ANSWERS_NUMBER;
-	PrepareAnsw(end_time - start_time, correct_answ_indx, answers, l);
+UINT PrintAnsw(const game_tick &start_time, const game_tick &end_time, level *l) {
+	struct game_tick answers[ANSWERS_NUMBER] = {};
+	UINT correct_answ_indx = rand() % ANSWERS_NUMBER;
+	PrepareAnsw(start_time, end_time, correct_answ_indx, answers, l);
 
 	std::string str;
-
 	for (int i = 0; i < ANSWERS_NUMBER; i++) {
 		str += std::to_string(i + 1);
 		str += ") ";
-		str += SecToString(answers[i]);
+		str += std::to_string(answers[i].hour) + ":" + std::to_string(answers[i].minute);
 		//if (i == correct_answ_indx) {
 		//	str += "<";
 		//}
@@ -132,22 +155,22 @@ unsigned int PrintAnsw(const unsigned int start_time, const unsigned int end_tim
 	return correct_answ_indx;
 }
 
-void Level(unsigned int &start_time, unsigned int &end_time, level *l) {
-	start_time = rand() % (SEC_PER_DAY / 2);
+void Level(game_tick &start_time, game_tick &end_time, level *l) {
+	start_time.hour = rand() % (24 / 2);
+	start_time.minute = rand() % 60;
 	start_time = RoundTime(start_time, l->round_time);
-	do {
-		end_time = start_time + rand() % (SEC_PER_DAY - start_time);
-		end_time = RoundTime(end_time, l->round_time);
-	} while (end_time == start_time);
+	end_time.hour = start_time.hour + rand() % (23 - start_time.hour);
+	end_time.minute = rand() % 60;
+	end_time = RoundTime(end_time, l->round_time);
 }
 
 void PrintLine() {
 	std::cout << "==========================================\n";
 }
 
-void PrintQst(const unsigned int start_time, const unsigned int end_time) {
-	std::cout << SecToString(start_time) << "\n";
-	std::cout << SecToString(end_time) << "\n";
+void PrintQst(const game_tick &start_time, const game_tick &end_time) {
+	std::cout << std::to_string(start_time.hour) << ":" << std::to_string(start_time.minute) << "\n";
+	std::cout << std::to_string(end_time.hour) << ":" << std::to_string(end_time.minute) << "\n";
 	std::cout << "\n";
 	std::cout << "Press SPACE to speedup\n";
 }
@@ -159,7 +182,7 @@ void PrintHead(std::string level_name) {
 
 void SystemPlatformInit() {
 	// windows
-	srand((unsigned int)time(0));
+	srand((UINT)time(0));
 }
 
 int SystemGetKey()
@@ -183,7 +206,7 @@ int SystemWaitSpaceKey() {
 }
 
 // ms
-void SystemSleep(unsigned int timeout) {
+void SystemSleep(UINT timeout) {
 	std::this_thread::sleep_for(std::chrono::milliseconds(timeout));
 }
 
@@ -206,13 +229,13 @@ int main()
 {
 	SystemPlatformInit();
 
-	unsigned int start_time = 0;
-	unsigned int end_time = 0;
+	game_tick start_time = {};
+	game_tick end_time = {};
 
 	auto level = s_game_levels;
-	unsigned int correct_answ = 0;
+	UINT correct_answ = 0;
 	do {
-		for (unsigned int i = 0; i < level->qst_num; i++) {
+		for (UINT i = 0; i < level->qst_num; i++) {
 			Level(start_time, end_time, level);
 			SystemClearKeyboardBuffer();
 			PrintHead(level->name);
