@@ -13,41 +13,52 @@
 
 #define ANSWERS_NUMBER 4
 
-#define LEVEL_00_ROUND_TIME 60
-#define LEVEL_01_ROUND_TIME 30
-#define LEVEL_02_ROUND_TIME 15
+// sec
+#define LEVEL_01_ROUND_TIME 60 * 60
+#define LEVEL_02_ROUND_TIME 30 * 60
+#define LEVEL_03_ROUND_TIME 15 * 60
+#define LEVEL_04_ROUND_TIME 30
+#define LEVEL_05_ROUND_TIME 15
 
-#define MINUTES_PER_DAY 24 * 60
-#define MINUTES_PER_HALF_DAY 24 * 60 / 2
+#define SEC_PER_DAY 24 * 60 * 60
+#define SEC_PER_HALF_DAY 24 * 60 * 60 / 2
+
+#define ONE_HOUR_SEC 60 * 60
 
 typedef void(*LevelHandler)(unsigned int &start_time, unsigned int &end_time);
 
 struct level {
 	LevelHandler handler;
-	unsigned int repeat;
+	unsigned int qst_num;
 	unsigned int qst_time; // ms
 	unsigned int answ_time; // ms
 	std::string name;
+	unsigned int user_correct_answ;
 };
 
 // Levels 
-void Level00(unsigned int &start_time, unsigned int &end_time);
 void Level01(unsigned int &start_time, unsigned int &end_time);
 void Level02(unsigned int &start_time, unsigned int &end_time);
+void Level03(unsigned int &start_time, unsigned int &end_time);
+void Level04(unsigned int &start_time, unsigned int &end_time);
+void Level05(unsigned int &start_time, unsigned int &end_time);
 
 level s_game_levels[]{
-	{ Level00,  3, 2000, 10000, "level 00" },
-	{ Level01,  3, 3000, 10000, "level 01" },
-	{ Level02, 3, 2000, 10000, "level 02" },
-	{ nullptr, 0, 0, 0, "" }
+	{ Level01,  3, 5000, 10000, "level 01", 0 },
+	{ Level02,  4, 4000,  8000, "level 02", 0 },
+	{ Level03,  6, 3000,  4000, "level 03", 0 },
+	{ Level04,  6, 2000,  4000, "level 04", 0 },
+	{ Level05,  7, 1000,  2000, "level 05", 0 },
+	{ nullptr, 0, 0, 0, "", 0 }
 };
 
 // Windows
 HANDLE s_keyboard_handler;
 
-std::string MinutesToString(unsigned int time) {
-	unsigned int hours = time / 60;
-	unsigned int min = time - (hours * 60);
+std::string SecToString(unsigned int time) {
+	unsigned int hours = time / 60 / 60;
+	unsigned int min = (time - (hours * 60 * 60)) / 60;
+	unsigned int sec = time - (hours * 60 * 60) - (min * 60);
 	std::string str;
 
 	if (hours < 10) {
@@ -59,6 +70,11 @@ std::string MinutesToString(unsigned int time) {
 		str += "0";
 	}
 	str += std::to_string(min);
+	str += ":";
+	if (sec < 10) {
+		str += "0";
+	}
+	str += std::to_string(sec);
 	return str;
 }
 
@@ -76,19 +92,19 @@ unsigned int FakeAnswer(const unsigned int time, unsigned int strategi) {
 	case 3: { // +/- 1 hour strategi
 		int k = 0;
 		if (rand() % 2) {
-			if (time < MINUTES_PER_DAY - 60) {
-				k = 60;
+			if (time < SEC_PER_DAY - ONE_HOUR_SEC) {
+				k = ONE_HOUR_SEC;
 			}
 			else {
-				k = -60;
+				k = -ONE_HOUR_SEC;
 			}
 		}
 		else {
-			if (time > 60) {
-				k = -60;
+			if (time > ONE_HOUR_SEC) {
+				k = -ONE_HOUR_SEC;
 			}
 			else {
-				k = 60;
+				k = ONE_HOUR_SEC;
 			}
 		}
 		return time + k;
@@ -106,18 +122,20 @@ unsigned int PrintAnsw(const unsigned int start_time, const unsigned int end_tim
 	std::string str;
 
 	for (int i = 0; i < ANSWERS_NUMBER; i++) {
-		if (i) {
-			str += " ";
-		}
+		//if (i) {
+		//	str += " ";
+		//}
 		str += std::to_string(i + 1);
 		str += ") ";
 		if (i == correct_answ_indx) {
 			// mark for correct answer
 			//str += ">";
-			str += MinutesToString(correct_answ);
+			str += SecToString(correct_answ);
+			str += "\n";
 		}
 		else {
-			str += MinutesToString(FakeAnswer(correct_answ, rand() % ANSWERS_NUMBER));
+			str += SecToString(FakeAnswer(correct_answ, rand() % ANSWERS_NUMBER));
+			str += "\n";
 		}
 	}
 
@@ -125,30 +143,48 @@ unsigned int PrintAnsw(const unsigned int start_time, const unsigned int end_tim
 	return correct_answ_indx;
 }
 
+void Level05(unsigned int &start_time, unsigned int &end_time) {
+	start_time = rand() % (SEC_PER_DAY / 2);
+	RoundTime(start_time, LEVEL_05_ROUND_TIME);
+	do {
+		end_time = start_time + rand() % (SEC_PER_HALF_DAY - start_time);
+		RoundTime(end_time, LEVEL_05_ROUND_TIME);
+	} while (end_time == start_time);
+}
+
+void Level04(unsigned int &start_time, unsigned int &end_time) {
+	start_time = rand() % (SEC_PER_DAY / 2);
+	RoundTime(start_time, LEVEL_04_ROUND_TIME);
+	do {
+		end_time = start_time + rand() % (SEC_PER_HALF_DAY - start_time);
+		RoundTime(end_time, LEVEL_04_ROUND_TIME);
+	} while (end_time == start_time);
+}
+
+void Level03(unsigned int &start_time, unsigned int &end_time) {
+	start_time = rand() % (SEC_PER_DAY / 2);
+	RoundTime(start_time, LEVEL_03_ROUND_TIME);
+	do {
+		end_time = start_time + rand() % (SEC_PER_HALF_DAY - start_time);
+		RoundTime(end_time, LEVEL_03_ROUND_TIME);
+	} while (end_time == start_time);
+}
+
 void Level02(unsigned int &start_time, unsigned int &end_time) {
-	start_time = rand() % (MINUTES_PER_DAY / 2);
+	start_time = rand() % (SEC_PER_HALF_DAY / 2);
 	RoundTime(start_time, LEVEL_02_ROUND_TIME);
 	do {
-		end_time = start_time + rand() % (MINUTES_PER_HALF_DAY - start_time);
+		end_time = start_time + rand() % (SEC_PER_HALF_DAY - start_time);
 		RoundTime(end_time, LEVEL_02_ROUND_TIME);
 	} while (end_time == start_time);
 }
 
 void Level01(unsigned int &start_time, unsigned int &end_time) {
-	start_time = rand() % (MINUTES_PER_HALF_DAY / 2);
+	start_time = rand() % (SEC_PER_HALF_DAY / 2);
 	RoundTime(start_time, LEVEL_01_ROUND_TIME);
 	do {
-		end_time = start_time + rand() % (MINUTES_PER_HALF_DAY - start_time);
+		end_time = start_time + rand() % (SEC_PER_HALF_DAY - start_time);
 		RoundTime(end_time, LEVEL_01_ROUND_TIME);
-	} while (end_time == start_time);
-}
-
-void Level00(unsigned int &start_time, unsigned int &end_time) {
-	start_time = rand() % (MINUTES_PER_HALF_DAY / 2);
-	RoundTime(start_time, LEVEL_00_ROUND_TIME);
-	do {
-		end_time = start_time + rand() % (MINUTES_PER_HALF_DAY - start_time);
-		RoundTime(end_time, LEVEL_00_ROUND_TIME);
 	} while (end_time == start_time);
 }
 
@@ -157,8 +193,8 @@ void PrintLine() {
 }
 
 void PrintQst(const unsigned int start_time, const unsigned int end_time) {
-	std::cout << MinutesToString(start_time) << "\n";
-	std::cout << MinutesToString(end_time) << "\n";
+	std::cout << SecToString(start_time) << "\n";
+	std::cout << SecToString(end_time) << "\n";
 	std::cout << "\n";
 }
 
@@ -189,6 +225,13 @@ void SystemSleep(unsigned int timeout) {
 	std::this_thread::sleep_for(std::chrono::milliseconds(timeout));
 }
 
+void PrintStatistic(struct level *l) {
+	PrintHead(l->name);
+	printf("Level questons num: %d\n", l->qst_num);
+	printf("Level correct answers: %d\n", l->user_correct_answ);
+	printf("Wrong answers: %d\n", l->qst_num - l->user_correct_answ);
+	PrintLine();
+}
 
 int main()
 {
@@ -199,15 +242,12 @@ int main()
 
 	auto level = s_game_levels;
 	unsigned int correct_answ = 0;
-	unsigned int user_correct_answ = 0;
-	unsigned int user_total_qest = 0;
 	do {
-		for (unsigned int i = 0; i < level->repeat; i++) {
+		for (unsigned int i = 0; i < level->qst_num; i++) {
 			level->handler(start_time, end_time);
 			PrintHead(level->name);
 			PrintQst(start_time, end_time);
 			SystemSleep(level->qst_time);
-			user_total_qest++;
 			system("CLS");
 			
 			PrintHead(level->name);
@@ -226,19 +266,28 @@ int main()
 
 			int user_answ = key - 49;
 			if (correct_answ == user_answ) {
-				user_correct_answ++;
+				level->user_correct_answ++;
 				std::cout << "Yes!\n";
 			}
 			else { std::cout << "No!\n"; }
-			PrintLine();			
+			PrintLine();
 			SystemSleep(500);
 			system("CLS");
 		}
+		// Levasl Statistics
+		PrintStatistic(level);
+		system("pause");
+		system("CLS");
 		level++;
 	} while (level->handler != nullptr);
+
+	// Total Statistics
+	system("CLS");
 	PrintLine();
-	printf("Total questons: %d\n", user_total_qest);
-	printf("Correct answers: %d\n", user_correct_answ);
-	printf("Wrong answers: %d\n", user_total_qest - user_correct_answ);
+	level = s_game_levels;
+	do {
+		PrintStatistic(level);
+		level++;
+	} while (level->handler != nullptr);
 	PrintLine();
 }
