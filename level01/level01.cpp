@@ -31,12 +31,11 @@ struct level {
 
 level s_game_levels[]{
 	{ 60 * 60,  3, 5000, 8000, "level 01", 0 },
-	{ 60 * 30,  3, 5000, 8000, "level 02", 0 },
-	{ 15 * 30,  3, 5000, 8000, "level 03", 0 },
-	{      30,  3, 5000, 8000, "level 04", 0 },
-	{      15,  3, 5000, 8000, "level 05", 0 },
-	{       5,  3, 5000, 8000, "level 06", 0 },
-	{		0, 0, 0, 0, "", 0 }
+	{ 30 * 60,  3, 5000, 8000, "level 02", 0 },
+	{ 15 * 60,  3, 5000, 8000, "level 03", 0 },
+	{  5 * 60,  3, 5000, 8000, "level 04", 0 },
+	{  1 * 60,  3, 5000, 8000, "level 05", 0 },
+	{ 0, 0, 0, 0, "", 0 }
 };
 
 std::string SecToString(unsigned int time) {
@@ -54,11 +53,11 @@ std::string SecToString(unsigned int time) {
 		str += "0";
 	}
 	str += std::to_string(min);
-	str += ":";
-	if (sec < 10) {
-		str += "0";
-	}
-	str += std::to_string(sec);
+	//str += ":";
+	//if (sec < 10) {
+	//	str += "0";
+	//}
+	//str += std::to_string(sec);
 	return str;
 }
 
