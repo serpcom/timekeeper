@@ -13,13 +13,6 @@
 
 #define ANSWERS_NUMBER 4
 
-// sec
-#define LEVEL_01_ROUND_TIME 60 * 60
-#define LEVEL_02_ROUND_TIME 30 * 60
-#define LEVEL_03_ROUND_TIME 15 * 60
-#define LEVEL_04_ROUND_TIME 30
-#define LEVEL_05_ROUND_TIME 15
-
 #define SEC_PER_DAY 24 * 60 * 60
 #define SEC_PER_HALF_DAY 24 * 60 * 60 / 2
 
@@ -28,7 +21,7 @@
 typedef void(*LevelHandler)(unsigned int &start_time, unsigned int &end_time);
 
 struct level {
-	LevelHandler handler;
+	unsigned int round_time; // sec
 	unsigned int qst_num;
 	unsigned int qst_time; // ms
 	unsigned int answ_time; // ms
@@ -36,24 +29,15 @@ struct level {
 	unsigned int user_correct_answ;
 };
 
-// Levels 
-void Level01(unsigned int &start_time, unsigned int &end_time);
-void Level02(unsigned int &start_time, unsigned int &end_time);
-void Level03(unsigned int &start_time, unsigned int &end_time);
-void Level04(unsigned int &start_time, unsigned int &end_time);
-void Level05(unsigned int &start_time, unsigned int &end_time);
-
 level s_game_levels[]{
-	{ Level01,  3, 5000, 10000, "level 01", 0 },
-	{ Level02,  4, 4000,  8000, "level 02", 0 },
-	{ Level03,  6, 3000,  4000, "level 03", 0 },
-	{ Level04,  6, 2000,  4000, "level 04", 0 },
-	{ Level05,  7, 1000,  2000, "level 05", 0 },
-	{ nullptr, 0, 0, 0, "", 0 }
+	{ 60 * 60,  3, 5000, 8000, "level 01", 0 },
+	{ 60 * 30,  3, 5000, 8000, "level 02", 0 },
+	{ 15 * 30,  3, 5000, 8000, "level 03", 0 },
+	{      30,  3, 5000, 8000, "level 04", 0 },
+	{      15,  3, 5000, 8000, "level 05", 0 },
+	{       5,  3, 5000, 8000, "level 06", 0 },
+	{		0, 0, 0, 0, "", 0 }
 };
-
-// Windows
-HANDLE s_keyboard_handler;
 
 std::string SecToString(unsigned int time) {
 	unsigned int hours = time / 60 / 60;
@@ -143,48 +127,12 @@ unsigned int PrintAnsw(const unsigned int start_time, const unsigned int end_tim
 	return correct_answ_indx;
 }
 
-void Level05(unsigned int &start_time, unsigned int &end_time) {
+void Level(unsigned int &start_time, unsigned int &end_time, level *l) {
 	start_time = rand() % (SEC_PER_DAY / 2);
-	RoundTime(start_time, LEVEL_05_ROUND_TIME);
+	RoundTime(start_time, l->round_time);
 	do {
-		end_time = start_time + rand() % (SEC_PER_HALF_DAY - start_time);
-		RoundTime(end_time, LEVEL_05_ROUND_TIME);
-	} while (end_time == start_time);
-}
-
-void Level04(unsigned int &start_time, unsigned int &end_time) {
-	start_time = rand() % (SEC_PER_DAY / 2);
-	RoundTime(start_time, LEVEL_04_ROUND_TIME);
-	do {
-		end_time = start_time + rand() % (SEC_PER_HALF_DAY - start_time);
-		RoundTime(end_time, LEVEL_04_ROUND_TIME);
-	} while (end_time == start_time);
-}
-
-void Level03(unsigned int &start_time, unsigned int &end_time) {
-	start_time = rand() % (SEC_PER_DAY / 2);
-	RoundTime(start_time, LEVEL_03_ROUND_TIME);
-	do {
-		end_time = start_time + rand() % (SEC_PER_HALF_DAY - start_time);
-		RoundTime(end_time, LEVEL_03_ROUND_TIME);
-	} while (end_time == start_time);
-}
-
-void Level02(unsigned int &start_time, unsigned int &end_time) {
-	start_time = rand() % (SEC_PER_HALF_DAY / 2);
-	RoundTime(start_time, LEVEL_02_ROUND_TIME);
-	do {
-		end_time = start_time + rand() % (SEC_PER_HALF_DAY - start_time);
-		RoundTime(end_time, LEVEL_02_ROUND_TIME);
-	} while (end_time == start_time);
-}
-
-void Level01(unsigned int &start_time, unsigned int &end_time) {
-	start_time = rand() % (SEC_PER_HALF_DAY / 2);
-	RoundTime(start_time, LEVEL_01_ROUND_TIME);
-	do {
-		end_time = start_time + rand() % (SEC_PER_HALF_DAY - start_time);
-		RoundTime(end_time, LEVEL_01_ROUND_TIME);
+		end_time = start_time + rand() % (SEC_PER_DAY - start_time);
+		RoundTime(end_time, l->round_time);
 	} while (end_time == start_time);
 }
 
@@ -260,7 +208,7 @@ int main()
 	unsigned int correct_answ = 0;
 	do {
 		for (unsigned int i = 0; i < level->qst_num; i++) {
-			level->handler(start_time, end_time);
+			Level(start_time, end_time, level);
 			SystemClearKeyboardBuffer();
 			PrintHead(level->name);
 			PrintQst(start_time, end_time);
@@ -296,12 +244,9 @@ int main()
 			SystemSleep(500);
 			system("CLS");
 		}
-		// Level Statistics
-		PrintStatistic(level);
-		system("pause");
 		system("CLS");
 		level++;
-	} while (level->handler != nullptr);
+	} while (level->round_time != 0);
 
 	// Total Statistics
 	system("CLS");
@@ -310,6 +255,6 @@ int main()
 	do {
 		PrintStatistic(level);
 		level++;
-	} while (level->handler != nullptr);
+	} while (level->round_time != 0);
 	PrintLine();
 }
